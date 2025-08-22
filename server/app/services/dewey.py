@@ -30,25 +30,25 @@ def extract_text_from_pdf(path: Path, max_pages: int = 5) -> str:
 
 
 _DEWEY_RULES: list[tuple[str, str, list[str]]] = [
-    # ("005", "Informática", [
-    #     r"\bcomputaci[oó]n\b", r"\binform[aá]tica\b", r"\balgoritmo(s)?\b", r"\bprogramaci[oó]n\b",
-    #     r"\bsoftware\b", r"\bdatos\b", r"\binteligencia artificial\b", r"\bIA\b",
-    # ]),
-    # ("510", "Matemáticas", [r"\bmatem[aá]tica(s)?\b", r"\bc[aá]lculo\b", r"\b[aá]lgebra\b", r"\bgeometr[ií]a\b"]),
-    # ("530", "Física", [r"\bf[ií]sica\b", r"\benerg[ií]a\b", r"\bmec[aá]nica\b", r"\btermodin[aá]mica\b"]),
-    # ("540", "Química", [r"\bqu[ií]mica\b", r"\breacci[oó]n(es)?\b", r"\bat[oó]mo(s)?\b", r"\bmole[cú]la(s)?\b"]),
-    # ("570", "Biología", [r"\bbiolog[ií]a\b", r"\becolog[ií]a\b", r"\bgen[eé]tica\b", r"\borganismo(s)?\b"]),
-    # ("610", "Medicina", [r"\bmedicina\b", r"\bsalud\b", r"\bcl[ií]nico\b", r"\bterapia\b", r"\benh?fermedad(es)?\b"]),
-    # ("620", "Ingeniería", [r"\bingenier[ií]a\b", r"\bindustrial\b", r"\bmaterial(es)?\b", r"\bdiseño\b"]),
-    # ("780", "Música", [r"\bm[uú]sica\b", r"\bcomposici[oó]n\b", r"\binstrumento(s)?\b"]),
-    # ("796", "Deporte", [r"\bdeporte(s)?\b", r"\bf[uú]tbol\b", r"\bbaloncesto\b", r"\batletismo\b"]),
-    # ("320", "Ciencia política", [r"\bpol[ií]tica\b", r"\bestado\b", r"\bgobierno\b", r"\belecci[oó]n(es)?\b"]),
-    # ("330", "Economía", [r"\beconom[ií]a\b", r"\bfinanza(s)?\b", r"\bmercado\b", r"\bmacroeconom[ií]a\b"]),
-    # ("100", "Filosofía", [r"\bfilosof[ií]a\b", r"\b[eé]tica\b", r"\bl[oó]gica\b"]),
-    # ("200", "Religión", [r"\breligi[oó]n\b", r"\bbiblia\b", r"\bteolog[ií]a\b"]),
-    # ("400", "Lenguas", [r"\bling[uü][ií]stica\b", r"\bgram[aá]tica\b", r"\bidoma(s)?\b"]),
-    # ("800", "Literatura", [r"\bliteratura\b", r"\bpoes[ií]a\b", r"\bnarrativa\b", r"\bnovela\b"]),
-    # ("900", "Historia y geografía", [r"\bhistoria\b", r"\bgeograf[ií]a\b", r"\barqueolog[ií]a\b"]),
+    ("005", "Informática", [
+        r"\bcomputaci[oó]n\b", r"\binform[aá]tica\b", r"\balgoritmo(s)?\b", r"\bprogramaci[oó]n\b",
+        r"\bsoftware\b", r"\bdatos\b", r"\binteligencia artificial\b", r"\bIA\b",
+    ]),
+    ("510", "Matemáticas", [r"\bmatem[aá]tica(s)?\b", r"\bc[aá]lculo\b", r"\b[aá]lgebra\b", r"\bgeometr[ií]a\b"]),
+    ("530", "Física", [r"\bf[ií]sica\b", r"\benerg[ií]a\b", r"\bmec[aá]nica\b", r"\btermodin[aá]mica\b"]),
+    ("540", "Química", [r"\bqu[ií]mica\b", r"\breacci[oó]n(es)?\b", r"\bat[oó]mo(s)?\b", r"\bmole[cú]la(s)?\b"]),
+    ("570", "Biología", [r"\bbiolog[ií]a\b", r"\becolog[ií]a\b", r"\bgen[eé]tica\b", r"\borganismo(s)?\b"]),
+    ("610", "Medicina", [r"\bmedicina\b", r"\bsalud\b", r"\bcl[ií]nico\b", r"\bterapia\b", r"\benh?fermedad(es)?\b"]),
+    ("620", "Ingeniería", [r"\bingenier[ií]a\b", r"\bindustrial\b", r"\bmaterial(es)?\b", r"\bdiseño\b"]),
+    ("780", "Música", [r"\bm[uú]sica\b", r"\bcomposici[oó]n\b", r"\binstrumento(s)?\b"]),
+    ("796", "Deporte", [r"\bdeporte(s)?\b", r"\bf[uú]tbol\b", r"\bbaloncesto\b", r"\batletismo\b"]),
+    ("320", "Ciencia política", [r"\bpol[ií]tica\b", r"\bestado\b", r"\bgobierno\b", r"\belecci[oó]n(es)?\b"]),
+    ("330", "Economía", [r"\beconom[ií]a\b", r"\bfinanza(s)?\b", r"\bmercado\b", r"\bmacroeconom[ií]a\b"]),
+    ("100", "Filosofía", [r"\bfilosof[ií]a\b", r"\b[eé]tica\b", r"\bl[oó]gica\b"]),
+    ("200", "Religión", [r"\breligi[oó]n\b", r"\bbiblia\b", r"\bteolog[ií]a\b"]),
+    ("400", "Lenguas", [r"\bling[uü][ií]stica\b", r"\bgram[aá]tica\b", r"\bidoma(s)?\b"]),
+    ("800", "Literatura", [r"\bliteratura\b", r"\bpoes[ií]a\b", r"\bnarrativa\b", r"\bnovela\b"]),
+    ("900", "Historia y geografía", [r"\bhistoria\b", r"\bgeograf[ií]a\b", r"\barqueolog[ií]a\b"]),
 ]
 
 
