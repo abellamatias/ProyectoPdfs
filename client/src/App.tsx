@@ -10,6 +10,8 @@ import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 import { Hands, Results } from '@mediapipe/hands'
 import { Camera } from '@mediapipe/camera_utils'
+import { Snackbar } from './components/ui/snackbar'
+import { apiFetch } from './lib/utils'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${(pdfjs as any).version}/build/pdf.worker.min.js`
 
@@ -37,11 +39,18 @@ export default function App() {
   const camRef = useRef<Camera | null>(null)
   const handsRef = useRef<Hands | null>(null)
   const [gesturesEnabled, setGesturesEnabled] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; variant: 'success' | 'error' }>({ open: false, message: '', variant: 'success' })
 
   const fetchList = async () => {
-    const res = await fetch(`${API_BASE}/api/pdfs/`)
-    const data = await res.json()
-    setAllItems(data.items)
+    setLoading(true)
+    const res = await apiFetch<{ items: PdfItem[] }>(`${API_BASE}/api/pdfs/`)
+    setLoading(false)
+    if (res.ok && res.data) {
+      setAllItems(res.data.items)
+    } else {
+      setSnackbar({ open: true, message: `Error al listar: ${res.errorText ?? res.status}`, variant: 'error' })
+    }
   }
 
   useEffect(() => {
@@ -64,72 +73,86 @@ export default function App() {
   }, [allItems, filter])
 
   const onUpload = async (file: File) => {
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch(`${API_BASE}/api/pdfs/upload`, { method: 'POST', body: fd })
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        alert(`Error al subir PDF: ${res.status} ${txt}`)
-        return
-      }
-      const created: PdfItem = await res.json()
-      setFilter('')
-      await fetchList()
-      // Abrir automáticamente el documento subido
-      await openDoc(created)
-    } catch (e: any) {
-      alert(`Error al subir PDF: ${e?.message ?? e}`)
+    setLoading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/upload`, { method: 'POST', body: fd })
+    setLoading(false)
+    if (!res.ok || !res.data) {
+      setSnackbar({ open: true, message: `Error al subir PDF: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
     }
+    const created = res.data
+    setFilter('')
+    await fetchList()
+    await openDoc(created)
+    setSnackbar({ open: true, message: 'PDF subido correctamente', variant: 'success' })
   }
 
   const openDoc = async (doc: PdfItem) => {
-    const res = await fetch(`${API_BASE}/api/pdfs/${doc.id}/open`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    })
-    const data = await res.json()
-    setSelected(data)
-    setPage(data.current_page ?? 1)
+    setLoading(true)
+    const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/${doc.id}/open`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+    setLoading(false)
+    if (!res.ok || !res.data) {
+      setSnackbar({ open: true, message: `Error al abrir: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
+    }
+    setSelected(res.data)
+    setPage(res.data.current_page ?? 1)
+    setSnackbar({ open: true, message: 'Documento abierto', variant: 'success' })
   }
 
   const closeDoc = async () => {
     if (!selected) return
-    const res = await fetch(`${API_BASE}/api/pdfs/${selected.id}/close`, { method: 'POST' })
-    const data = await res.json()
-    setSelected(data)
+    setLoading(true)
+    const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/${selected.id}/close`, { method: 'POST' })
+    setLoading(false)
+    if (!res.ok) {
+      setSnackbar({ open: true, message: `Error al cerrar: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
+    }
     setSelected(null)
+    setSnackbar({ open: true, message: 'Documento cerrado', variant: 'success' })
   }
 
   const changePage = async (mode: 'next' | 'prev' | 'set', val?: number) => {
     if (!selected) return
-    const res = await fetch(`${API_BASE}/api/pdfs/${selected.id}/page`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, page: val })
-    })
-    const data = await res.json()
-    setSelected(data)
-    setPage(data.current_page)
+    setLoading(true)
+    const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/${selected.id}/page`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, page: val }) })
+    setLoading(false)
+    if (!res.ok || !res.data) {
+      setSnackbar({ open: true, message: `Error al cambiar página: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
+    }
+    setSelected(res.data)
+    setPage(res.data.current_page)
   }
 
   const classify = async (topic: string) => {
     if (!selected) return
-    const res = await fetch(`${API_BASE}/api/pdfs/${selected.id}/classify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic })
-    })
-    const data = await res.json()
-    setSelected(data)
+    setLoading(true)
+    const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/${selected.id}/classify`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) })
+    setLoading(false)
+    if (!res.ok || !res.data) {
+      setSnackbar({ open: true, message: `Error al clasificar: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
+    }
+    setSelected(res.data)
     await fetchList()
+    setSnackbar({ open: true, message: 'Documento clasificado', variant: 'success' })
   }
 
   const deleteDoc = async (id: number) => {
-    await fetch(`${API_BASE}/api/pdfs/${id}`, { method: 'DELETE' })
+    setLoading(true)
+    const res = await apiFetch(`${API_BASE}/api/pdfs/${id}`, { method: 'DELETE' })
+    setLoading(false)
+    if (!res.ok) {
+      setSnackbar({ open: true, message: `Error al borrar: ${res.errorText ?? res.status}`, variant: 'error' })
+      return
+    }
     if (selected?.id === id) setSelected(null)
     await fetchList()
+    setSnackbar({ open: true, message: 'Documento borrado', variant: 'success' })
   }
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -199,6 +222,11 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
+      {loading && (
+        <div className="app-loading-overlay" aria-busy>
+          <div className="spinner" />
+        </div>
+      )}
       <header className="border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <h1 className="font-semibold">PDF Gesture Reader</h1>
@@ -294,6 +322,12 @@ export default function App() {
           </CardContent>
         </Card>
       </div>
+      <Snackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        variant={snackbar.variant}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+      />
     </div>
   )
 }
