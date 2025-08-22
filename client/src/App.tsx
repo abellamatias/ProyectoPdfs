@@ -8,8 +8,7 @@ import { Upload, ChevronLeft, ChevronRight, Maximize2, X, Trash2 } from 'lucide-
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
-import { Hands, Results } from '@mediapipe/hands'
-import { Camera } from '@mediapipe/camera_utils'
+// Eliminado MediaPipe en frontend: procesamiento de gestos se mueve al backend
 import { Snackbar } from './components/ui/snackbar'
 import { apiFetch } from './lib/utils'
 
@@ -36,8 +35,7 @@ export default function App() {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [page, setPage] = useState(1)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const camRef = useRef<Camera | null>(null)
-  const handsRef = useRef<Hands | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const [gesturesEnabled, setGesturesEnabled] = useState(false)
   const [loading, setLoading] = useState(false)
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; variant: 'success' | 'error' }>({ open: false, message: '', variant: 'success' })
@@ -117,9 +115,7 @@ export default function App() {
 
   const changePage = async (mode: 'next' | 'prev' | 'set', val?: number) => {
     if (!selected) return
-    setLoading(true)
     const res = await apiFetch<PdfItem>(`${API_BASE}/api/pdfs/${selected.id}/page`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, page: val }) })
-    setLoading(false)
     if (!res.ok || !res.data) {
       setSnackbar({ open: true, message: `Error al cambiar página: ${res.errorText ?? res.status}`, variant: 'error' })
       return
@@ -159,64 +155,61 @@ export default function App() {
     setNumPages(numPages)
   }
 
-  // MediaPipe Hands: detección de dedos levantados
+  // Captura de cámara en frontend; inferencia de gestos en backend
   useEffect(() => {
     if (!gesturesEnabled) return
-
     const video = videoRef.current
     if (!video) return
 
-    const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    })
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 0,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
-    })
+    let intervalId: number | null = null
+    const lastGestureRef = { current: 'none' as 'none' | 'next' | 'prev' }
 
-    const isFingerUp = (landmarks: any, tipIdx: number, pipIdx: number) => {
-      // Dedo levantado si la punta está más arriba (menor y) que la articulación PIP
-      return landmarks[tipIdx].y < landmarks[pipIdx].y
-    }
-    let lastTime = 0
+    const start = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+        video.srcObject = stream
+        await video.play()
+        streamRef.current = stream
 
-    hands.onResults((results: Results) => {
-      const now = performance.now()
-      if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return
-      const lm = results.multiHandLandmarks[0]
-      const indexUp = isFingerUp(lm, 8, 6)
-      const middleUp = isFingerUp(lm, 12, 10)
-      // Prioridad: dos dedos (siguiente) > un dedo (anterior)
-      if (now - lastTime > 800) {
-        if (indexUp && middleUp) {
-          changePage('next')
-          lastTime = now
-        } else if (indexUp && !middleUp) {
-          changePage('prev')
-          lastTime = now
-        }
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+
+        intervalId = window.setInterval(async () => {
+          if (!ctx) return
+          const w = video.videoWidth || 640
+          const h = video.videoHeight || 480
+          if (w === 0 || h === 0) return
+          canvas.width = w
+          canvas.height = h
+          ctx.drawImage(video, 0, 0, w, h)
+          const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.7))
+          if (!blob) return
+          const fd = new FormData()
+          fd.append('file', blob, 'frame.jpg')
+          const res = await apiFetch<{ gesture: 'none' | 'next' | 'prev' }>(`${API_BASE}/api/gestures/infer`, { method: 'POST', body: fd })
+          if (!res.ok || !res.data) return
+          const g = res.data.gesture
+          if (g !== lastGestureRef.current) {
+            if (g === 'next') changePage('next')
+            if (g === 'prev') changePage('prev')
+            lastGestureRef.current = g
+          }
+        }, 700)
+      } catch (e) {
+        // Ignorar; probablemente permisos denegados
       }
-    })
+    }
 
-    const cam = new Camera(video, {
-      onFrame: async () => {
-        await hands.send({ image: video })
-      },
-      width: 640,
-      height: 480
-    })
-
-    cam.start()
-    camRef.current = cam
-    handsRef.current = hands
+    start()
 
     return () => {
-      cam.stop()
-      hands.close()
-      camRef.current = null
-      handsRef.current = null
+      if (intervalId) window.clearInterval(intervalId)
+      const stream = streamRef.current
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
+      if (video) video.srcObject = null
     }
   }, [gesturesEnabled, selected])
 

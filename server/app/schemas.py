@@ -35,3 +35,7 @@ class PDFPageRequest(BaseModel):
 
 class PDFClassifyRequest(BaseModel):
     topic: str
+
+
+class GestureInferResponse(BaseModel):
+    gesture: Literal["next", "prev", "none"]

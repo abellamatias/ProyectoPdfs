@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routers import pdfs, ws
+from app.routers import pdfs, ws, gestures
 from .database import init_db
 from .config import settings, ensure_dirs
 
@@ -28,6 +28,7 @@ ensure_dirs()
 
 app.include_router(pdfs.router, prefix="/api/pdfs", tags=["pdfs"])
 app.include_router(ws.router, prefix="/ws", tags=["ws"])
+app.include_router(gestures.router, prefix="/api/gestures", tags=["gestures"])
 
 app.mount(settings.PDFS_STATIC_MOUNT, StaticFiles(directory=settings.PDF_STORAGE_DIR), name="pdfs")
 

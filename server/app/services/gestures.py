@@ -24,7 +24,21 @@ class HandGestureDetector:
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         result = self.hands.process(frame_rgb)
         if not result.multi_hand_landmarks:
-            return None
-        # Heurística simple: dirección del pulgar vs. índice para inferir gesto.
-        # Nota: Esto es un placeholder; el frontend hará la detección en el navegador.
+            return GestureEvent(gesture="none")
+
+        # Usar la primera mano detectada
+        landmarks = result.multi_hand_landmarks[0].landmark
+
+        def is_finger_up(tip_idx: int, pip_idx: int) -> bool:
+            # Coordenadas normalizadas [0..1]; menor y => más arriba en la imagen
+            return landmarks[tip_idx].y < landmarks[pip_idx].y
+
+        index_up = is_finger_up(8, 6)
+        middle_up = is_finger_up(12, 10)
+
+        if index_up and middle_up:
+            return GestureEvent(gesture="next")
+        if index_up and not middle_up:
+            return GestureEvent(gesture="prev")
+
         return GestureEvent(gesture="none")
